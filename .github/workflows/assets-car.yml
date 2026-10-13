@@ -1,0 +1,40 @@
+name: Compile Assets.car (LocalhostAI icon)
+
+# One job: run Apple's own actool on a GitHub-hosted Mac, upload the
+# compiled Assets.car as an artifact. The Linux VM then drops that file
+# into LocalAgent.app and re-signs / re-uploads — no Mac to buy.
+# Trigger manually only; do not run on every push.
+on:
+  workflow_dispatch:
+
+jobs:
+  assets-car:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode / actool
+        run: |
+          xcodebuild -version
+          xcrun --find actool
+      - name: Compile asset catalog with actool
+        run: |
+          mkdir -p out
+          xcrun actool --output-format human-readable-text --notices --warnings \
+            --export-dependency-info out/actool-dependency-info.dat \
+            --output-partial-info-plist out/partial-info.plist \
+            --app-icon AppIcon \
+            --enable-on-demand-resources NO \
+            --target-device iphone --target-device ipad \
+            --minimum-deployment-target 26.0 \
+            --platform iphoneos \
+            --compile out Assets.xcassets
+          ls -lh out/
+          file out/Assets.car
+      - name: Upload compiled catalog
+        uses: actions/upload-artifact@v4
+        with:
+          name: Assets-car
+          path: |
+            out/Assets.car
+            out/partial-info.plist
+          retention-days: 30
